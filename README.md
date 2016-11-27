@@ -37,7 +37,7 @@ There is no relationship between this client and Willab or VTT.
 ## Todo
 
 - [ ] Cache result by timestamp
-- [ ] Support different output formats
+- [x] Support different output formats
 - [ ] Example zsh configuration
 - [ ] Timeout for request
-- [ ] Better error handling
+- [x] Better error handling
