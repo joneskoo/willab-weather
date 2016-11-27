@@ -1,51 +1,58 @@
+// Copyright (c) 2016 Joonas Kuorilehto
+// License: The MIT License (MIT)
+
+// The command willab-weather shows local weather from weather.willab.fi.
+// This is an unofficial command line client.
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"flag"
 	"log"
-	"net/http"
+	"os"
+
+	"github.com/joneskoo/willab-weather/weather"
 )
 
-// Linnanmaan sääasema JSON weather
-// http://weather.willab.fi/
-const weatherURL = "http://weather.willab.fi/weather.json"
+const dataURL = "http://weather.willab.fi/weather.json"
+const defaultTemplate = `Current weather in Oulu, Linnanmaa
 
-// Weather response JSON structure
-type Weather struct {
-	TempNow         float64 // -17.1,
-	TempHi          float64 // -12.2,
-	TempLo          float64 // -19.7,
-	DewPoint        float64 // -19.9,
-	Humidity        float64 // 79,
-	AirPressure     float64 // 1012.6,
-	WindSpeed       float64 // 2.6,
-	WindSpeedMax    float64 // 4.9,
-	WindDir         int     // 63,
-	Precipitation1d float64 // 0,
-	Precipitation1h float64 // 0,
-	SolarRad        int     // 10,
-	WindChill       float64 // -23.5,
-	Timestamp       string  // "2016-01-11 18:21 EET"
-}
+    Temperature:    {{ .TempNow }}
+
+                    24 hour low {{ .TempLo }} / high {{ .TempHi }}
+
+    Wind chill:     {{ .WindChill }}
+    Dew point:      {{ .DewPoint }}
+    Humidity:       {{ .Humidity }}
+    Air pressure:   {{ .AirPressure }}
+    Wind speed:     {{ .WindSpeed }}   (gusts {{ .WindSpeedMax }})
+    Wind direction: {{ .WindDir }}
+    Precipitation:  past hour {{ .Precipitation1h }}
+                    past day  {{ .Precipitation1d }}
+
+As of {{ .Timestamp }} from <http://weather.willab.fi/weather.html>
+`
 
 func main() {
-	res, err := http.Get(weatherURL)
+	var (
+		weatherURL urlFlag
+		tmpl       templateFlag
+	)
+	// Defaults
+	weatherURL.Set(dataURL)
+	tmpl.Set(defaultTemplate)
+	flag.Var(&weatherURL, "url", "URL to get data from")
+	flag.Var(&tmpl, "template", `Go template for report, e.g. "{{ .TempNow }}"`)
+	flag.Parse()
+
+	// Get weather data
+	weatherData, err := weather.FromURL(weatherURL.String())
 	if err != nil {
-		log.Fatal(err)
-	}
-	body, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to get weather data: %s", err)
 	}
 
-	var weather Weather
-	err = json.Unmarshal(body, &weather)
-	if err != nil {
-		fmt.Println("error:", err)
+	// Print report using customizable template
+	if err := tmpl.Execute(os.Stdout, weatherData); err != nil {
+		log.Fatalf("Failed to execute template: %s", err)
 	}
-	//fmt.Printf("%+v\n", weather)
-	fmt.Printf("Oulu %.1f°C\n", weather.TempNow)
+
 }
