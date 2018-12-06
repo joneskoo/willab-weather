@@ -18,6 +18,7 @@ func TestFromURL(t *testing.T) {
 	if w.TempNow != -4.7 {
 		t.Errorf("Want TempNow = %f, got %f", -4.7, w.TempNow)
 	}
+	server.Close()
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {

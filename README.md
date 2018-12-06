@@ -1,19 +1,11 @@
 # willab-weather
 
 Local weather command line client using data from <http://weather.willab.fi/>.
+This is unofficial and not endorsed by Willab or VTT.
 
 ```
-$ go get -u github.com/joneskoo/willab-weather
-$ $GOPATH/bin/willab-weather -help
-Usage of willab-weather:
-  -template value
-    	Go template for report, e.g. "{{ .TempNow }}"
-  -url value
-    	URL to get data from (default http://weather.willab.fi/weather.json)
-
-$ willab-weather -template "{{ .TempNow }}"
--4.7 °C%
-$ $GOPATH/bin/willab-weather
+$ go get github.com/joneskoo/willab-weather/...
+$ willab-weather
 Current weather in Oulu, Linnanmaa
 
     Temperature:    -4.7 °C
@@ -32,12 +24,16 @@ Current weather in Oulu, Linnanmaa
 As of 2016-11-27 13:07:00 +0200 EET from <http://weather.willab.fi/weather.html>
 ```
 
-There is no relationship between this client and Willab or VTT.
+Advanced usage
 
-## Todo
+```
+$ willab-weather -help
+Usage of willab-weather:
+  -template value
+    	Go template for report, e.g. "{{ .TempNow }}"
+  -url value
+    	URL to get data from (default http://weather.willab.fi/weather.json)
 
-- [ ] Cache result by timestamp
-- [x] Support different output formats
-- [ ] Example zsh configuration
-- [ ] Timeout for request
-- [x] Better error handling
+$ willab-weather -template "{{ .TempNow }}"
+-4.7 °C%
+```
