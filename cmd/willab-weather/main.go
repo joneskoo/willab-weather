@@ -10,10 +10,10 @@ import (
 	"log"
 	"os"
 
+	"github.com/joneskoo/willab-weather/pkg/flags"
 	"github.com/joneskoo/willab-weather/weather"
 )
 
-const dataURL = "http://weather.willab.fi/weather.json"
 const defaultTemplate = `Current weather in Oulu, Linnanmaa
 
     Temperature:    {{ .TempNow }}
@@ -34,11 +34,11 @@ As of {{ .Timestamp }} from <http://weather.willab.fi/weather.html>
 
 func main() {
 	var (
-		weatherURL urlFlag
-		tmpl       templateFlag
+		weatherURL flags.URLFlag
+		tmpl       flags.TemplateFlag
 	)
 	// Defaults
-	weatherURL.Set(dataURL)
+	weatherURL.Set(weather.DefaultURL)
 	tmpl.Set(defaultTemplate)
 	flag.Var(&weatherURL, "url", "URL to get data from")
 	flag.Var(&tmpl, "template", `Go template for report, e.g. "{{ .TempNow }}"`)

@@ -14,6 +14,9 @@ import (
 	"time"
 )
 
+// DefaultURL is the URL from where to retrieve weather data.
+const DefaultURL = "http://weather.willab.fi/weather.json"
+
 // FromURL retrieves weather data from provided HTTP URL to JSON data.
 func FromURL(url string) (w Weather, err error) {
 	res, err := http.Get(url)
