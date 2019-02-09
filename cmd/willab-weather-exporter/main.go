@@ -23,37 +23,52 @@ var (
 )
 
 var (
+	reqDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Subsystem: "willab",
+		Name:      "request_duration_seconds",
+		Help:      "Duration of requests made to Willab API",
+		Buckets:   prometheus.ExponentialBuckets(0.02, 2, 8),
+	})
+
 	temp = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "willab_temperature_celsius",
-		Help: "Current temperature in Oulu, Linnanmaa",
+		Subsystem: "willab",
+		Name:      "temperature_celsius",
+		Help:      "Current temperature in Oulu, Linnanmaa",
 	})
 	windchill = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "willab_windchill_celsius",
-		Help: "Current wind chill in Oulu, Linnanmaa",
+		Subsystem: "willab",
+		Name:      "windchill_celsius",
+		Help:      "Current wind chill in Oulu, Linnanmaa",
 	})
 	dewpoint = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "willab_dewpoint_celsius",
-		Help: "Current dew point in Oulu, Linnanmaa",
+		Subsystem: "willab",
+		Name:      "dewpoint_celsius",
+		Help:      "Current dew point in Oulu, Linnanmaa",
 	})
 	humidity = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "willab_humidity_ratio",
-		Help: "Current humidity in Oulu, Linnanmaa",
+		Subsystem: "willab",
+		Name:      "humidity_ratio",
+		Help:      "Current humidity in Oulu, Linnanmaa",
 	})
 	airpressure = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "willab_airpressure_hpa",
-		Help: "Current air pressure in Oulu, Linnanmaa",
+		Subsystem: "willab",
+		Name:      "airpressure_hpa",
+		Help:      "Current air pressure in Oulu, Linnanmaa",
 	})
 	windspeed = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "willab_windspeed_meters_per_second",
-		Help: "Current wind speed in Oulu, Linnanmaa",
+		Subsystem: "willab",
+		Name:      "windspeed_meters_per_second",
+		Help:      "Current wind speed in Oulu, Linnanmaa",
 	})
 	winddirection = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "willab_winddirection_degrees",
-		Help: "Current wind direction degrees in Oulu, Linnanmaa",
+		Subsystem: "willab",
+		Name:      "winddirection_degrees",
+		Help:      "Current wind direction degrees in Oulu, Linnanmaa",
 	})
 	precipitation = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "willab_precipitation_mm_per_hour",
-		Help: "Current wind chill in Oulu, Linnanmaa",
+		Subsystem: "willab",
+		Name:      "precipitation_mm_per_hour",
+		Help:      "Current wind chill in Oulu, Linnanmaa",
 	})
 )
 
@@ -97,16 +112,17 @@ func main() {
 }
 
 func refresh(dataURL string) {
-	log.Println("Refreshing data")
+	start := time.Now()
 	w, err := weather.FromURL(dataURL)
 	if err != nil {
 		log.Printf("Error retrieving weather: %v", err)
 		return
 	}
+	reqDuration.Observe(time.Since(start).Seconds())
 	temp.Set(float64(w.TempNow))
 	windchill.Set(float64(w.WindChill))
 	dewpoint.Set(float64(w.DewPoint))
-	humidity.Set(float64(w.Humidity))
+	humidity.Set(float64(w.Humidity) / 100)
 	airpressure.Set(float64(w.AirPressure))
 	windspeed.Set(float64(w.WindSpeed))
 	winddirection.Set(float64(w.WindDir))
