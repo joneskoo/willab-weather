@@ -75,7 +75,7 @@ func TestExporter(t *testing.T) {
 }
 
 func testExporter(t *testing.T) (ex *exporter, cleanup func()) {
-	testurl, cleanup := testserver(t)
+	testurl, cleanup := testServer(t)
 	ex = newExporter(testurl)
 	return ex, cleanup
 }
