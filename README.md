@@ -4,7 +4,7 @@ Local weather command line client using data from <https://weather.willab.fi/>.
 This is unofficial and not endorsed by Willab or VTT.
 
 ```
-$ go get github.com/joneskoo/willab-weather/...
+$ go install github.com/joneskoo/willab-weather/cmd/willab-weather@latest
 $ willab-weather
 Current weather in Oulu, Linnanmaa
 
