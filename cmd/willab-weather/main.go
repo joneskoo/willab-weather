@@ -29,7 +29,7 @@ const defaultTemplate = `Current weather in Oulu, Linnanmaa
     Precipitation:  past hour {{ .Precipitation1h }}
                     past day  {{ .Precipitation1d }}
 
-As of {{ .Timestamp }} from <http://weather.willab.fi/weather.html>
+As of {{ .Timestamp }} from <{{ .WeatherURL }}>
 `
 
 func main() {
