@@ -9,122 +9,126 @@ import (
 	"github.com/joneskoo/willab-weather/pkg/flags"
 	"github.com/joneskoo/willab-weather/weather"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const (
-	name = "willab-weather-exporter"
-)
-
-var (
-	ttl    = 60 * time.Second
-	listen = ":8080"
-)
-
-var (
-	reqDuration = promauto.NewHistogram(prometheus.HistogramOpts{
-		Subsystem: "willab",
-		Name:      "request_duration_seconds",
-		Help:      "Duration of requests made to Willab API",
-		Buckets:   prometheus.ExponentialBuckets(0.02, 2, 8),
-	})
-
-	temp = promauto.NewGauge(prometheus.GaugeOpts{
-		Subsystem: "willab",
-		Name:      "temperature_celsius",
-		Help:      "Current temperature in Oulu, Linnanmaa",
-	})
-	windchill = promauto.NewGauge(prometheus.GaugeOpts{
-		Subsystem: "willab",
-		Name:      "windchill_celsius",
-		Help:      "Current wind chill in Oulu, Linnanmaa",
-	})
-	dewpoint = promauto.NewGauge(prometheus.GaugeOpts{
-		Subsystem: "willab",
-		Name:      "dewpoint_celsius",
-		Help:      "Current dew point in Oulu, Linnanmaa",
-	})
-	humidity = promauto.NewGauge(prometheus.GaugeOpts{
-		Subsystem: "willab",
-		Name:      "humidity_ratio",
-		Help:      "Current humidity in Oulu, Linnanmaa",
-	})
-	airpressure = promauto.NewGauge(prometheus.GaugeOpts{
-		Subsystem: "willab",
-		Name:      "airpressure_hpa",
-		Help:      "Current air pressure in Oulu, Linnanmaa",
-	})
-	windspeed = promauto.NewGauge(prometheus.GaugeOpts{
-		Subsystem: "willab",
-		Name:      "windspeed_meters_per_second",
-		Help:      "Current wind speed in Oulu, Linnanmaa",
-	})
-	winddirection = promauto.NewGauge(prometheus.GaugeOpts{
-		Subsystem: "willab",
-		Name:      "winddirection_degrees",
-		Help:      "Current wind direction degrees in Oulu, Linnanmaa",
-	})
-	precipitation = promauto.NewGauge(prometheus.GaugeOpts{
-		Subsystem: "willab",
-		Name:      "precipitation_mm_per_hour",
-		Help:      "Current wind chill in Oulu, Linnanmaa",
-	})
-)
-
-type updateHandler struct {
-	dataURL string
-	ticker  <-chan time.Time
-
-	http.Handler
-}
-
-func (h updateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	select {
-	case <-h.ticker:
-		refresh(h.dataURL)
-	default:
-		// use cached data
-	}
-
-	h.Handler.ServeHTTP(w, r)
-}
+// name of the program
+const name = "willab-weather-exporter"
 
 func main() {
 	var weatherURL flags.URLFlag
 	_ = weatherURL.Set(weather.DefaultURL)
 	flag.Var(&weatherURL, "url", "URL to get data from")
-	flag.StringVar(&listen, "listen", listen, "HTTP listen port for Prometheus metrics")
-	flag.DurationVar(&ttl, "ttl", ttl, "Minimum TTL for caching weather data")
+	listenAddr := flag.String("listen", ":8080", "HTTP listen port for Prometheus metrics")
 	flag.Parse()
 
-	dataURL := weatherURL.URL.String()
-	refresh(dataURL)
+	ex := newExporter(weatherURL.URL.String())
 
-	log.Printf("%v listening on %v", name, listen)
-	server := http.Server{Addr: listen}
-	http.Handle("/metrics", updateHandler{
-		dataURL: dataURL,
-		ticker:  time.Tick(ttl),
-		Handler: promhttp.Handler(),
-	})
+	log.Printf("%v listening on %v", name, *listenAddr)
+	server := http.Server{Addr: *listenAddr}
+	http.Handle("/metrics", ex.Handler())
 	log.Fatal(server.ListenAndServe())
 }
 
-func refresh(dataURL string) {
+type exporter struct {
+	willabWeatherURL string
+
+	reqDuration   prometheus.Histogram
+	temp          prometheus.Gauge
+	windchill     prometheus.Gauge
+	dewpoint      prometheus.Gauge
+	humidity      prometheus.Gauge
+	airpressure   prometheus.Gauge
+	windspeed     prometheus.Gauge
+	winddirection prometheus.Gauge
+	precipitation prometheus.Gauge
+}
+
+func newExporter(weatherURL string) *exporter {
+	ex := &exporter{
+		willabWeatherURL: weatherURL,
+
+		reqDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Subsystem: "willab",
+			Name:      "request_duration_seconds",
+			Help:      "Duration of requests made to Willab API",
+			Buckets:   prometheus.ExponentialBuckets(0.02, 2, 8),
+		}),
+
+		temp: prometheus.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "willab",
+			Name:      "temperature_celsius",
+			Help:      "Current temperature in Oulu, Linnanmaa",
+		}),
+		windchill: prometheus.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "willab",
+			Name:      "windchill_celsius",
+			Help:      "Current wind chill in Oulu, Linnanmaa",
+		}),
+		dewpoint: prometheus.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "willab",
+			Name:      "dewpoint_celsius",
+			Help:      "Current dew point in Oulu, Linnanmaa",
+		}),
+		humidity: prometheus.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "willab",
+			Name:      "humidity_ratio",
+			Help:      "Current humidity in Oulu, Linnanmaa",
+		}),
+		airpressure: prometheus.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "willab",
+			Name:      "airpressure_hpa",
+			Help:      "Current air pressure in Oulu, Linnanmaa",
+		}),
+		windspeed: prometheus.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "willab",
+			Name:      "windspeed_meters_per_second",
+			Help:      "Current wind speed in Oulu, Linnanmaa",
+		}),
+		winddirection: prometheus.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "willab",
+			Name:      "winddirection_degrees",
+			Help:      "Current wind direction degrees in Oulu, Linnanmaa",
+		}),
+		precipitation: prometheus.NewGauge(prometheus.GaugeOpts{
+			Subsystem: "willab",
+			Name:      "precipitation_mm_per_hour",
+			Help:      "Current wind chill in Oulu, Linnanmaa",
+		}),
+	}
+	ex.refresh()
+	return ex
+}
+
+func (ex *exporter) Handler() http.Handler {
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(ex.reqDuration, ex.temp, ex.windchill, ex.dewpoint, ex.humidity, ex.airpressure, ex.windspeed, ex.winddirection, ex.precipitation)
+
+	//reg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	//reg.MustRegister(collectors.NewGoCollector())
+	h := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ex.refresh()
+		h.ServeHTTP(w, r)
+	})
+
+}
+
+func (ex *exporter) refresh() {
 	start := time.Now()
-	w, err := weather.FromURL(dataURL)
+	w, err := weather.FromURL(ex.willabWeatherURL)
 	if err != nil {
 		log.Printf("Error retrieving weather: %v", err)
 		return
 	}
-	reqDuration.Observe(time.Since(start).Seconds())
-	temp.Set(float64(w.TempNow))
-	windchill.Set(float64(w.WindChill))
-	dewpoint.Set(float64(w.DewPoint))
-	humidity.Set(float64(w.Humidity) / 100)
-	airpressure.Set(float64(w.AirPressure))
-	windspeed.Set(float64(w.WindSpeed))
-	winddirection.Set(float64(w.WindDir))
-	precipitation.Set(float64(w.Precipitation1h))
+	ex.reqDuration.Observe(time.Since(start).Seconds())
+	ex.temp.Set(float64(w.TempNow))
+	ex.windchill.Set(float64(w.WindChill))
+	ex.dewpoint.Set(float64(w.DewPoint))
+	ex.humidity.Set(float64(w.Humidity) / 100)
+	ex.airpressure.Set(float64(w.AirPressure))
+	ex.windspeed.Set(float64(w.WindSpeed))
+	ex.winddirection.Set(float64(w.WindDir))
+	ex.precipitation.Set(float64(w.Precipitation1h))
 }
