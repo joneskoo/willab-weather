@@ -96,7 +96,6 @@ func newExporter(weatherURL string) *exporter {
 			Help:      "Current wind chill in Oulu, Linnanmaa",
 		}),
 	}
-	ex.refresh()
 	return ex
 }
 
