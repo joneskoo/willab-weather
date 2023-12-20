@@ -1,8 +1,10 @@
 package weather_test
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -10,7 +12,7 @@ import (
 )
 
 func TestFromURL(t *testing.T) {
-	testurl, cleanup := testServer()
+	testurl, cleanup := testServer(t)
 	defer cleanup()
 
 	w, err := weather.FromURL(testurl)
@@ -45,19 +47,41 @@ func TestFromURL(t *testing.T) {
 	}
 }
 
-func testServer() (testurl string, cleanup func()) {
-	// Start a fake server to mock willab weather
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-type", "application/json")
-		w.Write([]byte(`{"tempnow":-9.3,"templo":-9.4,"temphi":-1.2,"airpressure":983.7,"humidity":74.5,"precipitation1h":0.0,"precipitation1d":0.0,"precipitation1w":0.0,"solarrad":-1,"windspeed":0.3,"windspeedmax":1.1,"winddir":147,"timestamp":"2023-12-20 20:34:47 UTC","windchill":-9.3,"dewpoint":-13.0}`))
-	}))
-	return server.URL, func() { server.Close() }
-}
-
 func mustParseTime(t *testing.T, s string) time.Time {
 	tt, err := time.Parse(time.RFC3339, s)
 	if err != nil {
 		t.Fatalf("time.Parse(%q): %v", s, err)
 	}
 	return tt
+}
+
+func testServer(t *testing.T) (testurl string, cleanup func()) {
+	// Start a fake server to mock willab weather
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// update data if golden file is missing
+		if _, err := os.Stat("testdata/weather.json"); os.IsNotExist(err) {
+			updateWeather(t, "testdata/weather.json")
+		}
+		http.ServeFile(w, r, "testdata/weather.json")
+	}))
+	return server.URL, func() { server.Close() }
+}
+
+func updateWeather(t *testing.T, datafile string) {
+	// download from willab.DefaultURL and save to testdata/weather.json
+	res, err := http.Get(weather.DefaultURL)
+	if err != nil {
+		t.Fatalf("HTTP request: %s", err)
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatalf("reading response: %s", err)
+	}
+
+	res.Body.Close()
+
+	err = os.WriteFile(datafile, body, 0644)
+	if err != nil {
+		t.Fatalf("writing file: %s", err)
+	}
 }
