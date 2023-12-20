@@ -92,7 +92,7 @@ func init() {
 	}
 }
 
-const layout = "2006-01-02 15:04 MST"
+const layout = "2006-01-02 15:04:05 MST"
 
 // UnmarshalJSON is used to decode JSON into Time value.
 func (t *Timestamp) UnmarshalJSON(data []byte) error {
